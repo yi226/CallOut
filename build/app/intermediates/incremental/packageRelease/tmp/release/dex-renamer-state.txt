@@ -1,0 +1,4 @@
+#Thu May 26 15:01:16 CST 2022
+base.0=/home/ypf/IdeaProjects/call_out/build/app/intermediates/dex/release/minifyReleaseWithR8/classes.dex
+renamed.0=classes.dex
+path.0=classes.dex

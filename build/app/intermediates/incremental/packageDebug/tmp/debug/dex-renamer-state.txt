@@ -1,0 +1,4 @@
+#Thu May 26 14:48:55 CST 2022
+base.0=/home/ypf/IdeaProjects/call_out/build/app/intermediates/dex/debug/mergeDexDebug/classes.dex
+renamed.0=classes.dex
+path.0=classes.dex
