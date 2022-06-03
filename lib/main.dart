@@ -31,24 +31,41 @@ class _CheckHomeState extends State<CheckHome> {
   List<UserInfo> userMapList = <UserInfo>[];
   List<UserInfo> unselectUser = <UserInfo>[];
   List<UserInfo> searchUser = <UserInfo>[];
+  List<String> saved = <String>[];
 
   var nameString = '';
   var nameList = [];
   var firstOpen = false;
   int total = 0;
+  String barText = '点名器';
 
   _CheckHomeState() {
     _get('firstOpen').then((value) {
       if (value == 'f') {
-        _get('names').then((value) {
-          if (value != null) {
-            nameString = value;
-            nameList = nameString.split('\n');
+        _get("saved").then((value) {
+          if (value != null && value != '') {
+            String saveNames = value;
+            var saveNamesList = saveNames.split('\n');
+            _get(saveNamesList[0]).then(((value) {
+              setState(() {
+                barText = saveNamesList[0];
+                saved = saveNames.split('\n');
+                if (value != null) {
+                  nameString = value;
+                  nameList = nameString.split('\n');
+                } else {
+                  nameList = ['学生1', '学生2'];
+                }
+                addUser();
+              });
+            }));
           } else {
-            nameList = ['学生1', '学生2'];
+            setState(() {
+              barText = '示例';
+              nameList = ['学生1', '学生2'];
+              addUser();
+            });
           }
-          addUser();
-          setState(() {});
         });
       } else {
         firstOpen = true;
@@ -58,6 +75,8 @@ class _CheckHomeState extends State<CheckHome> {
   }
 
   addUser() {
+    userMapList.clear();
+    unselectUser.clear();
     total = nameList.length;
     for (var i = 0; i < total; i++) {
       userMapList.add(UserInfo(name: nameList[i], id: i));
@@ -89,6 +108,70 @@ class _CheckHomeState extends State<CheckHome> {
     });
   }
 
+  saveList(String saveString) {
+    var saveSringList = saveString.split('+');
+    String saveName = saveSringList[0];
+    String saveValue = saveSringList[1];
+
+    _save(saveName, saveValue);
+    if (!saved.contains(saveName)) {
+      saved.add(saveName);
+      _save("saved", saved.join('\n'));
+    }
+
+    setState(() {
+      search(null);
+      barText = saveName;
+      nameString = saveValue;
+      nameList = saveValue.split('\n');
+      addUser();
+    });
+  }
+
+  changeList(String saveName) {
+    _get(saveName).then((value) {
+      if (value != null) {
+        setState(() {
+          search(null);
+          nameString = value;
+          nameList = nameString.split('\n');
+          addUser();
+        });
+      }
+    });
+  }
+
+  deleteList(String removeName) {
+    search(null);
+    saved.remove(removeName);
+    _save("saved", saved.join('\n'));
+    _save(removeName, "");
+    setState(() {
+      if (removeName == barText) {
+        if (saved.isNotEmpty) {
+          _get(saved[0]).then((value) {
+            setState(() {
+              barText = saved[0];
+              if (value != null) {
+                nameString = value;
+                nameList = nameString.split('\n');
+              } else {
+                nameList = ['学生1', '学生2'];
+              }
+              addUser();
+            });
+          });
+        } else {
+          setState(() {
+            barText = '示例';
+            nameList = ['学生1', '学生2'];
+            addUser();
+          });
+        }
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (firstOpen) {
@@ -113,16 +196,12 @@ class _CheckHomeState extends State<CheckHome> {
                 onPressed: () {
                   Navigator.of(context)
                       .push(MaterialPageRoute(
-                          builder: ((context) => const GetNameList())))
+                          builder: ((context) => GetNameList(
+                                onEditingComplete: saveList,
+                              ))))
                       .then((value) {
                     if (value != null) {
-                      nameString = value;
-                      nameList = nameString.split('\n');
-                      _save('names', nameString);
                       setState(() {
-                        userMapList.clear();
-                        unselectUser.clear();
-                        addUser();
                         firstOpen = false;
                       });
                       _save('firstOpen', 'f');
@@ -137,61 +216,60 @@ class _CheckHomeState extends State<CheckHome> {
     } else {
       return Scaffold(
         appBar: AppBar(
-          title: const Text("点名器"),
+          title: Text(barText),
           centerTitle: true,
         ),
-        body: GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onTap: () => FocusScope.of(context).requestFocus(FocusNode()),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.only(top: 15, bottom: 10),
-                  child: SearchWidget(
-                    onEditingComplete: search,
-                  ),
-                ),
-                Expanded(
-                  child: ListView(
-                      padding: const EdgeInsets.only(
-                          right: 15, left: 15, bottom: 15),
-                      children:
-                          (searchUser.isNotEmpty ? searchUser : userMapList)
-                              .map((e) {
-                        return Column(
-                          children: [
-                            CheckboxListTile(
-                                title: Text(e.name,
-                                    style: e.isSelected
-                                        ? const TextStyle(
-                                            color: Colors.grey,
-                                            decoration:
-                                                TextDecoration.lineThrough)
-                                        : const TextStyle(color: Colors.black)),
-                                controlAffinity:
-                                    ListTileControlAffinity.leading,
-                                value: e.isSelected,
-                                onChanged: (bool? v) {
-                                  setState(() {
-                                    e.isSelected = v!;
-                                    // 保存未选中的
-                                    if (!e.isSelected) {
-                                      if (!unselectUser.contains(e)) {
-                                        unselectUser.add(e);
-                                      }
-                                    } else {
-                                      if (unselectUser.contains(e)) {
-                                        unselectUser.remove(e);
-                                      }
+        body: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.only(top: 15, bottom: 10),
+              child: SearchWidget(
+                onEditingComplete: search,
+              ),
+            ),
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: () => FocusScope.of(context).requestFocus(FocusNode()),
+                child: ListView(
+                    padding:
+                        const EdgeInsets.only(right: 15, left: 15, bottom: 15),
+                    children: (searchUser.isNotEmpty ? searchUser : userMapList)
+                        .map((e) {
+                      return Column(
+                        children: [
+                          CheckboxListTile(
+                              title: Text(e.name,
+                                  style: e.isSelected
+                                      ? const TextStyle(
+                                          color: Colors.grey,
+                                          decoration:
+                                              TextDecoration.lineThrough)
+                                      : const TextStyle(color: Colors.black)),
+                              controlAffinity: ListTileControlAffinity.leading,
+                              value: e.isSelected,
+                              onChanged: (bool? v) {
+                                setState(() {
+                                  e.isSelected = v!;
+                                  // 保存未选中的
+                                  if (!e.isSelected) {
+                                    if (!unselectUser.contains(e)) {
+                                      unselectUser.add(e);
                                     }
-                                  });
-                                })
-                          ],
-                        );
-                      }).toList()),
-                ),
-              ],
-            )),
+                                  } else {
+                                    if (unselectUser.contains(e)) {
+                                      unselectUser.remove(e);
+                                    }
+                                  }
+                                });
+                              })
+                        ],
+                      );
+                    }).toList()),
+              ),
+            )
+          ],
+        ),
         drawer: Drawer(
           child: Column(
             children: [
@@ -225,24 +303,16 @@ class _CheckHomeState extends State<CheckHome> {
                 onPressed: () {
                   Navigator.of(context)
                       .push(MaterialPageRoute(
-                          builder: ((context) => const GetNameList())))
+                          builder: ((context) => GetNameList(
+                                onEditingComplete: saveList,
+                              ))))
                       .then((value) {
-                    if (value != null) {
-                      nameString = value;
-                      nameList = nameString.split('\n');
-                      _save('names', nameString);
-                      setState(() {
-                        userMapList.clear();
-                        unselectUser.clear();
-                        addUser();
-                      });
-                    }
                     Navigator.of(context).pop();
                   });
                 },
               ),
               Container(
-                height: 200,
+                height: 150,
               ),
               ElevatedButton(
                 child: const Text('清空'),
@@ -257,6 +327,58 @@ class _CheckHomeState extends State<CheckHome> {
               )
             ],
           ),
+        ),
+        endDrawer: Drawer(
+          width: 200,
+          child: Column(children: <Widget>[
+            Row(
+              children: const <Widget>[
+                Expanded(
+                  // 自定义抽屉头
+                  child: DrawerHeader(
+                    decoration: BoxDecoration(
+                      // 背景颜色
+                      color: Colors.blue,
+                      // 图片
+                    ),
+                    child: Text("切换名单",
+                        style: TextStyle(color: Colors.white, fontSize: 25)),
+                  ),
+                )
+              ],
+            ),
+            Expanded(
+                child: ListView(
+              children: saved.map((e) {
+                return Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextButton(
+                          child: Text(e,
+                              style: const TextStyle(
+                                  color: Colors.blue, fontSize: 15)),
+                          onPressed: () {
+                            changeList(e);
+                            barText = e;
+                            Navigator.of(context).pop();
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () {
+                            deleteList(e);
+                            Navigator.of(context).pop();
+                          },
+                        )
+                      ],
+                    ),
+                  ],
+                );
+              }).toList(),
+            )),
+          ]),
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: () {
