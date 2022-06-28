@@ -1,3 +1,4 @@
+import 'update/view.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'unselect.dart';
@@ -324,7 +325,13 @@ class _CheckHomeState extends State<CheckHome> {
                   });
                   Navigator.of(context).pop();
                 },
-              )
+              ),
+              ElevatedButton(child: const Text('关于'),
+                onPressed: () {
+                  Navigator.of(context).push(MaterialPageRoute(
+                      builder: ((context) =>  const UpdatePage())));
+                },
+              ),
             ],
           ),
         ),
